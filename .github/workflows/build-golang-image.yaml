@@ -1,13 +1,15 @@
-name: Build golang Docker Image
+name: Build huggingface Image
 
 on:
   push:
-    branches: [ golang ]
+    branches: [ huggingface ]
     paths:
       - 'Dockerfile'
-      - 'main.go'
+      - 'app.js'
+      - 'package.json'
+      - 'index.html'
   pull_request:
-    branches: [ golang ]
+    branches: [ huggingface ]
   workflow_dispatch:
 
 jobs:
@@ -20,6 +22,8 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+        with:
+          ref: huggingface  
 
       - name: Log in to GitHub Container Registry
         uses: docker/login-action@v3
@@ -37,10 +41,10 @@ jobs:
           context: .
           push: true
           tags: |
-            ghcr.io/${{ github.repository_owner }}/goxhttp:latest
+            ghcr.io/${{ github.repository_owner }}/hug:latest
           labels: |
             org.opencontainers.image.source=https://github.com/${{ github.repository }}
-            org.opencontainers.image.description=HTTP Server
+            org.opencontainers.image.description=http server
             org.opencontainers.image.licenses=MIT
           cache-from: type=gha
           cache-to: type=gha,mode=max
