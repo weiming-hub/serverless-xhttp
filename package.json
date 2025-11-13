@@ -1,22 +1,16 @@
 {
-  "name": "node-xhttp",
+  "name": "starter-template",
   "version": "1.0.0",
-  "description": "nodejs",
-  "author": "eooce",
-  "repository": "",
-  "license": "MIT",
-  "private": false,
-  "main": "app.js",
+  "description": "",
+  "main": "src/main.js",
+  "type": "module",
   "scripts": {
-    "dev": "node --expose-gc app.js",
-    "start": "node --expose-gc app.js",
-    "debug": "LOG_LEVEL=debug node --expose-gc app.js"
+    "format": "prettier --write ."
   },
   "dependencies": {
-    "axios": "^1.9.0"
+    "node-appwrite": "^14.1.0"
   },
-  "engines": {
-    "node": ">=16.0.0",
-    "npm": ">=7.0.0"
+  "devDependencies": {
+    "prettier": "^3.2.5"
   }
 }
