@@ -264,7 +264,7 @@ async function addAccessTask() {
     }
 }
 
-// VLESS 协议解析
+// VLS 解析
 function parse_uuid(uuid) {
     uuid = uuid.replaceAll('-', '')
     const r = []
@@ -352,7 +352,7 @@ async function read_vless_header(reader, cfg_uuid_str) {
         throw new Error('parse hostname failed')
     }
     
-    log('info', `VLESS connection to ${hostname}:${port}`);
+    log('info', `VLS connection to ${hostname}:${port}`);
     return {
         hostname,
         port,
@@ -489,7 +489,7 @@ function pipe_relay() {
         
         try {
             if (src.pipe) {
-                // 优化 Node.js Stream 传输
+                // 优化 Stream 传输
                 src.pause();
                 
                 // 设置高水位线以优化内存使用
@@ -1099,17 +1099,11 @@ class Session {
 // 获取ISP信息
 async function getISPInfo() {
     try {
-        const response = await axios.get('https://speed.cloudflare.com/meta', {
-            timeout: 8000,
-            headers: {
-                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
-            }
-        });
-        
+        const response = await axios.get('https://api.ip.sb/geoip', { headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36', timeout: 5000 }});
         const data = response.data;
-        const country = data.country || 'Unknown';
-        const asOrganization = data.asOrganization || 'Unknown';
-        const isp = `${country}-${asOrganization}`.replace(/[^a-zA-Z0-9\-_]/g, '_');
+        const country = data.country_code || 'Unknown';
+        const org = data.isp || 'Unknown';
+        const isp = `${country}-${org}`.replace(/[^a-zA-Z0-9\-_]/g, '_');
         
         log('info', `ISP info obtained: ${isp}`);
         return isp;
@@ -1211,7 +1205,7 @@ const server = http.createServer((req, res) => {
         return;
     }
 
-    // VLESS 请求处理
+    // VLS 请求处理
     const pathMatch = req.url.match(new RegExp(`${XPATH}/([^/]+)(?:/([0-9]+))?$`));
     if (!pathMatch) {
         res.writeHead(404);
@@ -1223,7 +1217,6 @@ const server = http.createServer((req, res) => {
     const seq = pathMatch[2] ? parseInt(pathMatch[2]) : null;
 
     if (req.method === 'GET' && !seq) {
-        // 使用HTTP Hijacking来正确处理VLESS协议
         const hijacker = res.socket;
         if (!hijacker) {
             log('error', 'HTTP Hijacking not supported');
@@ -1256,7 +1249,7 @@ const server = http.createServer((req, res) => {
             return;
         }
 
-        // 等待VLESS响应头准备就绪，设置超时
+        // 等待VLS响应头准备就绪，设置超时
         let waitCount = 0;
         const maxWait = 600; // 30秒超时 (600 * 50ms)
         
@@ -1265,8 +1258,6 @@ const server = http.createServer((req, res) => {
                 try {
                     hijacker.write(session.responseHeader);
                     log('debug', `Sent VLESS response header for session: ${uuid}`);
-                    
-                    // 开始数据中继 - 使用事件驱动的方式
                     session.remote.on('data', (chunk) => {
                         try {
                             if (!hijacker.destroyed) {
