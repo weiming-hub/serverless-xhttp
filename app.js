@@ -1,3 +1,5 @@
+#!/usr/bin/env node
+
 const os = require('os');
 const fs = require('fs');
 const net = require('net');
@@ -405,8 +407,6 @@ async function connect_remote(hostname, port) {
     try {
         // 使用自定义DNS解析器
         let resolvedHostname = hostname;
-        
-        // 如果不是IP地址，则进行DNS解析
         if (!/^\d+\.\d+\.\d+\.\d+$/.test(hostname) && !hostname.startsWith('[')) {
             try {
                 resolvedHostname = await customDnsResolver.resolve(hostname);
@@ -491,23 +491,18 @@ function pipe_relay() {
             if (src.pipe) {
                 // 优化 Stream 传输
                 src.pause();
-                
-                // 设置高水位线以优化内存使用
                 src._readableState.highWaterMark = chunkSize;
                 if (dest._writableState) {
                     dest._writableState.highWaterMark = chunkSize;
                 }
                 
-                // 使用 Transform 流进行数据优化
                 const { Transform } = require('stream');
                 const optimizer = new Transform({
                     transform(chunk, encoding, callback) {
                         totalBytes += chunk.length;
-                        // 批量处理小数据包
                         if (chunk.length < 1024) {
                             this.push(chunk);
                         } else {
-                            // 大块数据直接传输
                             this.push(chunk);
                         }
                         callback();
@@ -1189,7 +1184,6 @@ const server = http.createServer((req, res) => {
         'X-Padding': generatePadding(100, 1000),
     };
 
-    // 根路径和订阅路径
     if (req.url === '/') {
         res.writeHead(200, { 'Content-Type': 'text/plain' });
         res.end('Hello, World\n');
@@ -1198,7 +1192,10 @@ const server = http.createServer((req, res) => {
     
     if (req.url === `/${SUB_PATH}`) {
         const nodeName = NAME ? `${NAME}-${ISP}` : ISP;
-        const vlessURL = `vless://${UUID}@${IP}:443?encryption=none&security=tls&sni=${IP}&alpn=h2%2Chttp%2F1.1&fp=chrome&allowInsecure=1&type=xhttp&host=${IP}&path=${SETTINGS.XPATH}&mode=packet-up#${nodeName}`; 
+        let port, security;
+        if (!DOMAIN) { port = PORT;security = 'none';
+        } else { port = 443;security = 'tls'; }
+        const vlessURL = `vless://${UUID}@${IP}:${port}?encryption=none&security=${security}&sni=${IP}&alpn=h2%2Chttp%2F1.1&fp=chrome&allowInsecure=1&type=xhttp&host=${IP}&path=${SETTINGS.XPATH}&mode=packet-up#${nodeName}`; 
         const base64Content = Buffer.from(vlessURL).toString('base64');
         res.writeHead(200, { 'Content-Type': 'text/plain' });
         res.end(base64Content + '\n');
@@ -1418,14 +1415,9 @@ server.on('upgrade', (request, socket, head) => {
 
 // 优化连接处理
 server.on('connection', (socket) => {
-    // 设置socket选项
     socket.setNoDelay(true);
     socket.setKeepAlive(true, 1000);
-    
-    // 设置超时
     socket.setTimeout(300000);
-    
-    // 设置缓冲区大小
     if (socket.setReadBuffer) {
         socket.setReadBuffer(SETTINGS.READ_BUFFER_SIZE);
     }
@@ -1448,17 +1440,5 @@ server.listen(PORT, () => {
       delFiles();
     }, 300000);
     addAccessTask();
-    log('info', `=================================`);
-    log('info', `Log level: ${SETTINGS.LOG_LEVEL}`);
-    log('info', `Max buffered posts: ${SETTINGS.MAX_BUFFERED_POSTS}`);
-    log('info', `Max POST size: ${Math.round(SETTINGS.MAX_POST_SIZE/1024)}KB`);
-    log('info', `Buffer size: ${SETTINGS.BUFFER_SIZE}KB`);
-    log('info', `Chunk size: ${Math.round(SETTINGS.CHUNK_SIZE/1024)}KB`);
-    log('info', `Session timeout: ${SETTINGS.SESSION_TIMEOUT}ms`);
-    log('info', `Session cleanup interval: ${SETTINGS.SESSION_CLEANUP_INTERVAL}ms`);
-    log('info', `Max session age: ${SETTINGS.MAX_SESSION_AGE}ms`);
-    log('info', `Batch process size: ${SETTINGS.BATCH_PROCESS_SIZE}`);
-    log('info', `DNS servers: 1.1.1.1, 8.8.8.8`);
-    log('info', `=================================`);
     console.log(`Server is running on port ${PORT}`);
 });
